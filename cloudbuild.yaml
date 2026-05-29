@@ -1,0 +1,28 @@
+substitutions:
+  _REGION: us-central1
+
+steps:
+  - name: gcr.io/cloud-builders/docker
+    args:
+      - build
+      - -t
+      - us-central1-docker.pkg.dev/${PROJECT_ID}/agrostock/frontend:latest
+      - .
+  - name: gcr.io/cloud-builders/docker
+    args:
+      - push
+      - us-central1-docker.pkg.dev/${PROJECT_ID}/agrostock/frontend:latest
+  - name: gcr.io/google.com/cloudsdktool/cloud-sdk
+    entrypoint: gcloud
+    args:
+      - run
+      - deploy
+      - frontend
+      - --image=us-central1-docker.pkg.dev/${PROJECT_ID}/agrostock/frontend:latest
+      - --platform=managed
+      - --region=${_REGION}
+      - --allow-unauthenticated
+      - --memory=256Mi
+      - --cpu=1
+
+timeout: 600s

@@ -1,0 +1,2202 @@
+This file is a merged representation of the entire codebase, combined into a single document by Repomix.
+
+<file_summary>
+This section contains a summary of this file.
+
+<purpose>
+This file contains a packed representation of the entire repository's contents.
+It is designed to be easily consumable by AI systems for analysis, code review,
+or other automated processes.
+</purpose>
+
+<file_format>
+The content is organized as follows:
+1. This summary section
+2. Repository information
+3. Directory structure
+4. Repository files (if enabled)
+5. Multiple file entries, each consisting of:
+  - File path as an attribute
+  - Full contents of the file
+</file_format>
+
+<usage_guidelines>
+- This file should be treated as read-only. Any changes should be made to the
+  original repository files, not this packed version.
+- When processing this file, use the file path to distinguish
+  between different files in the repository.
+- Be aware that this file may contain sensitive information. Handle it with
+  the same level of security as you would the original repository.
+</usage_guidelines>
+
+<notes>
+- Some files may have been excluded based on .gitignore rules and Repomix's configuration
+- Binary files are not included in this packed representation. Please refer to the Repository Structure section for a complete list of file paths, including binary files
+- Files matching default ignore patterns are excluded
+- Files are sorted by Git change count (files with more changes are at the bottom)
+</notes>
+
+</file_summary>
+
+<directory_structure>
+src/
+  components/
+    Layout.jsx
+  pages/
+    Dashboard.jsx
+    Inventario.jsx
+    Login.jsx
+    Notificaciones.jsx
+    Ordenes.jsx
+    Productos.jsx
+    Register.jsx
+    UserDashboard.jsx
+  services/
+    api.js
+  App.jsx
+  index.css
+  main.jsx
+.directory
+.gitignore
+index.html
+package.json
+postcss.config.js
+tailwind.config.js
+vite.config.js
+</directory_structure>
+
+<files>
+This section contains the contents of the repository's files.
+
+<file path="src/components/Layout.jsx">
+import { NavLink, useNavigate } from 'react-router-dom'
+import {
+  LayoutDashboard, Package, Warehouse, ShoppingCart,
+  Bell, LogOut, Leaf, ChevronRight
+} from 'lucide-react'
+import { getUserName, getUserRole, clearSession } from '../services/api'
+
+const adminNavItems = [
+  { to: '/dashboard',      icon: LayoutDashboard, label: 'Dashboard' },
+  { to: '/productos',      icon: Package,          label: 'Productos' },
+  { to: '/inventario',     icon: Warehouse,        label: 'Inventario' },
+  { to: '/ordenes',        icon: ShoppingCart,     label: 'Órdenes' },
+  { to: '/notificaciones', icon: Bell,             label: 'Notificaciones' },
+]
+
+const userNavItems = [
+  { to: '/user',           icon: LayoutDashboard, label: 'Dashboard' },
+  { to: '/productos',      icon: Package,          label: 'Productos' },
+]
+
+export default function Layout({ children }) {
+  const navigate = useNavigate()
+  const userName = getUserName()
+  const userRole = getUserRole()
+  const navItems = userRole === 'ADMIN' ? adminNavItems : userNavItems
+  const panelLabel = userRole === 'ADMIN' ? 'Panel Admin' : 'Panel Usuario'
+
+  const handleLogout = () => {
+    clearSession()
+    navigate('/')
+  }
+
+  return (
+    <div className="flex min-h-screen bg-slate-950 text-white">
+      {/* Sidebar */}
+      <aside className="w-64 flex flex-col bg-slate-900 border-r border-slate-800 shrink-0">
+        {/* Brand */}
+        <div className="px-6 py-6 border-b border-slate-800">
+          <div className="flex items-center gap-3">
+            <div className="bg-emerald-500 text-slate-900 rounded-xl p-2">
+              <Leaf size={22} strokeWidth={2.5} />
+            </div>
+            <div>
+              <p className="font-bold text-lg leading-none">AgroStock</p>
+              <p className="text-slate-400 text-xs mt-0.5">{panelLabel}</p>
+            </div>
+          </div>
+          <div className="mt-5 bg-slate-800 rounded-2xl p-4 border border-slate-700">
+            <p className="text-slate-400 text-xs uppercase tracking-[0.2em]">Usuario</p>
+            <p className="text-white font-semibold mt-1">{userName || 'Invitado'}</p>
+            <p className="text-slate-500 text-xs mt-1">{userRole || 'USER'}</p>
+          </div>
+        </div>
+
+        {/* Nav */}
+        <nav className="flex-1 py-6 px-3 space-y-1">
+          {navItems.map(({ to, icon: Icon, label }) => (
+            <NavLink
+              key={to}
+              to={to}
+              className={({ isActive }) =>
+                `flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm font-medium transition-all duration-150 group
+                ${isActive
+                  ? 'bg-emerald-500 text-slate-900'
+                  : 'text-slate-400 hover:text-white hover:bg-slate-800'}`
+              }
+            >
+              {({ isActive }) => (
+                <>
+                  <Icon size={18} />
+                  <span className="flex-1">{label}</span>
+                  {isActive && <ChevronRight size={14} />}
+                </>
+              )}
+            </NavLink>
+          ))}
+        </nav>
+
+        {/* Logout */}
+        <div className="px-3 py-4 border-t border-slate-800">
+          <button
+            onClick={handleLogout}
+            className="flex items-center gap-3 w-full px-4 py-2.5 rounded-xl text-sm font-medium text-slate-400 hover:text-red-400 hover:bg-slate-800 transition-all"
+          >
+            <LogOut size={18} />
+            Cerrar sesión
+          </button>
+        </div>
+      </aside>
+
+      {/* Main content */}
+      <main className="flex-1 overflow-auto">
+        {children}
+      </main>
+    </div>
+  )
+}
+</file>
+
+<file path="src/pages/Dashboard.jsx">
+import { Package, Warehouse, Bell, ShoppingCart } from 'lucide-react'
+import { useEffect, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
+import axios from 'axios'
+import { serviceRoots, getUserName, getUserRole } from '../services/api'
+import Layout from '../components/Layout'
+
+function StatCard({ icon, title, value, onClick }) {
+  return (
+    <button
+      onClick={onClick}
+      className="bg-slate-900 rounded-3xl p-6 border border-slate-800 shadow-xl text-left hover:border-emerald-500/40 hover:bg-slate-800/50 transition-all group"
+    >
+      <div className="flex justify-between items-center">
+        <div>
+          <p className="text-slate-400">{title}</p>
+          <h2 className="text-3xl font-bold text-white mt-2">{value}</h2>
+        </div>
+        <div className="text-emerald-400 group-hover:scale-110 transition-transform">
+          {icon}
+        </div>
+      </div>
+    </button>
+  )
+}
+
+function Dashboard() {
+  const navigate = useNavigate()
+  const [status, setStatus] = useState({})
+
+  useEffect(() => {
+    const entries = Object.entries(serviceRoots)
+    const checks = entries.map(async ([key, root]) => {
+      try {
+        const url = root.replace(/\/$/, '')
+        const res = await axios.get(url + '/actuator/health', { timeout: 2500 }).catch(() => null)
+        if (res && res.status >= 200 && res.status < 300) return [key, { ok: true }]
+        await axios.get(url + '/', { timeout: 2500 })
+        return [key, { ok: true }]
+      } catch {
+        return [key, { ok: false }]
+      }
+    })
+    Promise.all(checks).then((results) => setStatus(Object.fromEntries(results)))
+  }, [])
+
+  const serviceLinks = {
+    auth: null,
+    product: '/productos',
+    inventory: '/inventario',
+    notification: '/notificaciones',
+    purchase: '/ordenes',
+  }
+
+  const userName = getUserName()
+  const userRole = getUserRole()
+
+  return (
+    <Layout>
+      <div className="p-8">
+        <div className="mb-10">
+          <h1 className="text-5xl font-bold">Dashboard {userRole === 'ADMIN' ? 'Admin' : 'Usuario'}</h1>
+          <p className="text-slate-400 mt-2">Hola {userName || 'usuario'}, bienvenido al centro de control agrícola 🌾</p>
+        </div>
+
+        <div className="grid md:grid-cols-4 gap-6">
+          <StatCard
+            title="Productos"
+            value="—"
+            icon={<Package size={42} />}
+            onClick={() => navigate('/productos')}
+          />
+          <StatCard
+            title="Inventario"
+            value="—"
+            icon={<Warehouse size={42} />}
+            onClick={() => navigate('/inventario')}
+          />
+          <StatCard
+            title="Órdenes"
+            value="—"
+            icon={<ShoppingCart size={42} />}
+            onClick={() => navigate('/ordenes')}
+          />
+          <StatCard
+            title="Notificaciones"
+            value="—"
+            icon={<Bell size={42} />}
+            onClick={() => navigate('/notificaciones')}
+          />
+        </div>
+
+        <div className="mt-10 bg-slate-900 rounded-3xl border border-slate-800 p-8">
+          <h2 className="text-2xl font-bold mb-4">Estado de Microservicios</h2>
+          <div className="grid md:grid-cols-2 gap-4">
+            {Object.keys(serviceRoots).map((key) => {
+              const label = {
+                auth: 'AuthService',
+                product: 'ProductService',
+                inventory: 'InventoryService',
+                notification: 'NotificationService',
+                purchase: 'PurchaseOrderService',
+              }[key]
+
+              const ok = status[key]?.ok
+              const link = serviceLinks[key]
+
+              return (
+                <div
+                  key={key}
+                  className="flex items-center justify-between bg-slate-800 rounded-2xl p-4 border border-slate-700"
+                >
+                  <div>
+                    <h3 className="font-semibold">{label}</h3>
+                    <p className="text-slate-400 text-sm mt-1">{serviceRoots[key]}</p>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    {link && (
+                      <button
+                        onClick={() => navigate(link)}
+                        className="text-xs text-emerald-400 hover:text-emerald-300 transition"
+                      >
+                        Ir →
+                      </button>
+                    )}
+                    <span className={`px-3 py-1 rounded-full font-medium text-sm ${ok === undefined ? 'bg-slate-600 text-slate-300' : ok ? 'bg-emerald-500 text-slate-900' : 'bg-red-600 text-white'}`}>
+                      {ok === undefined ? 'Verificando...' : ok ? 'Online' : 'Offline'}
+                    </span>
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+        </div>
+      </div>
+    </Layout>
+  )
+}
+
+export default Dashboard
+</file>
+
+<file path="src/pages/Inventario.jsx">
+import { useEffect, useState } from 'react'
+import { Warehouse, Plus, Pencil, Trash2, X, Check, Search, AlertTriangle } from 'lucide-react'
+import { inventoryApi, productApi, getUserRole } from '../services/api'
+import Layout from '../components/Layout'
+
+const EMPTY = { productoId: '', cantidad: '', nivelMinimo: '' }
+
+function StockBadge({ cantidad, minimo }) {
+  const low = cantidad <= (minimo || 0)
+  return (
+    <span className={`text-xs font-medium px-2.5 py-0.5 rounded-full border ${
+      low
+        ? 'bg-red-500/10 text-red-400 border-red-500/20'
+        : 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20'
+    }`}>
+      {low && <AlertTriangle size={11} className="inline mr-1 -mt-0.5" />}
+      {cantidad} unidades
+    </span>
+  )
+}
+
+function Modal({ title, onClose, children }) {
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
+      <div className="bg-slate-900 border border-slate-700 rounded-3xl w-full max-w-md p-8 shadow-2xl">
+        <div className="flex justify-between items-center mb-6">
+          <h2 className="text-xl font-bold">{title}</h2>
+          <button onClick={onClose} className="text-slate-400 hover:text-white transition">
+            <X size={20} />
+          </button>
+        </div>
+        {children}
+      </div>
+    </div>
+  )
+}
+
+export default function Inventario() {
+  const [items, setItems] = useState([])
+  const [productos, setProductos] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState('')
+  const [search, setSearch] = useState('')
+  const [modal, setModal] = useState(null)
+  const [selected, setSelected] = useState(null)
+  const [form, setForm] = useState(EMPTY)
+  const [saving, setSaving] = useState(false)
+  const [formError, setFormError] = useState('')
+  const isAdmin = getUserRole() === 'ADMIN'
+
+  const fetchAll = async () => {
+    setLoading(true)
+    setError('')
+    try {
+      const [invRes, prodRes] = await Promise.all([
+        inventoryApi.get('/inventory/stock'),                         // ← ruta real
+        productApi.get('/productos').catch(() => ({ data: [] })),
+      ])
+      setItems(invRes.data || [])
+      setProductos(prodRes.data || [])
+    } catch {
+      setError('No se pudo conectar con el InventoryService.')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  useEffect(() => { fetchAll() }, [])
+
+  const productoNombre = (id) => {
+    const p = productos.find(p => String(p.id) === String(id))
+    return p ? p.nombre : `Producto #${id}`
+  }
+
+  const openCreate = () => { setForm(EMPTY); setFormError(''); setModal('create') }
+  const openEdit = (item) => {
+    setSelected(item)
+    setForm({
+      productoId: item.productoId || '',
+      cantidad: item.cantidad ?? '',
+      nivelMinimo: item.nivelMinimo ?? '',
+    })
+    setFormError('')
+    setModal('edit')
+  }
+  const openDelete = (item) => { setSelected(item); setModal('delete') }
+  const closeModal = () => { setModal(null); setSelected(null) }
+
+  const handleSave = async () => {
+    setSaving(true)
+    setFormError('')
+    try {
+      const payload = {
+        productoId: form.productoId,
+        cantidad: parseInt(form.cantidad, 10),
+        nivelMinimo: parseInt(form.nivelMinimo, 10) || 0,
+      }
+      if (modal === 'create') {
+        await inventoryApi.post('/inventory/stock', payload)          // ← ruta real
+      } else {
+        await inventoryApi.put(`/inventory/stock/${selected.id}`, payload)  // ← ruta real
+      }
+      closeModal()
+      fetchAll()
+    } catch {
+      setFormError('Error al guardar. Verifica los datos.')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  const handleDelete = async () => {
+    setSaving(true)
+    try {
+      await inventoryApi.delete(`/inventory/stock/${selected.id}`)    // ← ruta real
+      closeModal()
+      fetchAll()
+    } catch {
+      setFormError('Error al eliminar.')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  const filtered = items.filter(i =>
+    productoNombre(i.productoId).toLowerCase().includes(search.toLowerCase())
+  )
+
+  const lowStockCount = items.filter(i => i.cantidad <= (i.nivelMinimo || 0)).length
+
+  return (
+    <Layout>
+      <div className="p-8">
+        <div className="flex items-center justify-between mb-8">
+          <div>
+            <div className="flex items-center gap-3 mb-1">
+              <Warehouse size={28} className="text-emerald-400" />
+              <h1 className="text-3xl font-bold">Inventario</h1>
+            </div>
+            <p className="text-slate-400">Stock — <span className="font-mono text-xs text-slate-500">GET /api/inventory/stock</span></p>
+          </div>
+          {isAdmin && (
+            <button
+              onClick={openCreate}
+              className="flex items-center gap-2 bg-emerald-500 hover:bg-emerald-600 text-slate-900 font-semibold px-5 py-2.5 rounded-xl transition"
+            >
+              <Plus size={18} />
+              Nuevo Stock
+            </button>
+          )}
+        </div>
+
+        {lowStockCount > 0 && (
+          <div className="flex items-center gap-3 bg-amber-500/10 border border-amber-500/30 rounded-2xl p-4 mb-6 text-amber-400 text-sm">
+            <AlertTriangle size={18} />
+            <span><strong>{lowStockCount}</strong> producto(s) por debajo del nivel mínimo</span>
+          </div>
+        )}
+
+        <div className="relative mb-6">
+          <Search size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" />
+          <input
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Buscar por producto..."
+            className="w-full pl-10 pr-4 py-3 bg-slate-900 border border-slate-700 rounded-xl text-sm placeholder:text-slate-500 focus:outline-none focus:border-emerald-500 transition"
+          />
+        </div>
+
+        {loading && <div className="text-center py-20 text-slate-400">Cargando inventario...</div>}
+        {error && <div className="bg-red-500/10 border border-red-500/30 rounded-2xl p-4 text-red-400 text-sm mb-4">{error}</div>}
+
+        {!loading && !error && (
+          <div className="bg-slate-900 rounded-2xl border border-slate-800 overflow-hidden">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-slate-800 text-slate-400 text-left">
+                  <th className="px-6 py-4 font-medium">Producto</th>
+                  <th className="px-6 py-4 font-medium">Cantidad</th>
+                  <th className="px-6 py-4 font-medium">Nivel Mínimo</th>
+                  <th className="px-6 py-4 font-medium">Acciones</th>
+                </tr>
+              </thead>
+              <tbody>
+                {filtered.length === 0 ? (
+                  <tr><td colSpan={4} className="text-center py-12 text-slate-500">Sin registros de stock</td></tr>
+                ) : filtered.map((item) => (
+                  <tr key={item.id} className="border-b border-slate-800/50 hover:bg-slate-800/30 transition">
+                    <td className="px-6 py-4 font-medium">{productoNombre(item.productoId)}</td>
+                    <td className="px-6 py-4">
+                      <StockBadge cantidad={item.cantidad ?? 0} minimo={item.nivelMinimo} />
+                    </td>
+                    <td className="px-6 py-4 text-slate-400">{item.nivelMinimo ?? '—'}</td>
+                    <td className="px-6 py-4">
+                      {isAdmin ? (
+                        <div className="flex items-center gap-2">
+                          <button onClick={() => openEdit(item)} className="p-2 rounded-lg text-slate-400 hover:text-white hover:bg-slate-700 transition"><Pencil size={15} /></button>
+                          <button onClick={() => openDelete(item)} className="p-2 rounded-lg text-slate-400 hover:text-red-400 hover:bg-red-500/10 transition"><Trash2 size={15} /></button>
+                        </div>
+                      ) : (
+                        <span className="text-slate-500 text-sm">Sin permisos</span>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+
+      {(modal === 'create' || modal === 'edit') && (
+        <Modal title={modal === 'create' ? 'Nuevo Stock' : 'Editar Stock'} onClose={closeModal}>
+          <div className="space-y-4">
+            <select
+              value={form.productoId}
+              onChange={(e) => setForm({ ...form, productoId: e.target.value })}
+              className="w-full p-3 rounded-xl bg-slate-800 border border-slate-700 text-sm focus:outline-none focus:border-emerald-500 transition"
+            >
+              <option value="">Selecciona un producto</option>
+              {productos.map(p => <option key={p.id} value={p.id}>{p.nombre}</option>)}
+            </select>
+            <div className="grid grid-cols-2 gap-4">
+              <input
+                value={form.cantidad}
+                onChange={(e) => setForm({ ...form, cantidad: e.target.value })}
+                placeholder="Cantidad"
+                type="number"
+                min="0"
+                className="w-full p-3 rounded-xl bg-slate-800 border border-slate-700 text-sm placeholder:text-slate-500 focus:outline-none focus:border-emerald-500 transition"
+              />
+              <input
+                value={form.nivelMinimo}
+                onChange={(e) => setForm({ ...form, nivelMinimo: e.target.value })}
+                placeholder="Nivel mínimo"
+                type="number"
+                min="0"
+                className="w-full p-3 rounded-xl bg-slate-800 border border-slate-700 text-sm placeholder:text-slate-500 focus:outline-none focus:border-emerald-500 transition"
+              />
+            </div>
+            {formError && <p className="text-red-400 text-sm">{formError}</p>}
+            <button
+              onClick={handleSave}
+              disabled={saving}
+              className="w-full flex items-center justify-center gap-2 bg-emerald-500 hover:bg-emerald-600 disabled:opacity-60 text-slate-900 font-semibold p-3 rounded-xl transition"
+            >
+              <Check size={16} />
+              {saving ? 'Guardando...' : 'Guardar'}
+            </button>
+          </div>
+        </Modal>
+      )}
+
+      {modal === 'delete' && (
+        <Modal title="Eliminar Stock" onClose={closeModal}>
+          <p className="text-slate-300 mb-6">
+            ¿Eliminar el stock de <span className="font-bold text-white">{productoNombre(selected?.productoId)}</span>?
+          </p>
+          {formError && <p className="text-red-400 text-sm mb-4">{formError}</p>}
+          <div className="flex gap-3">
+            <button onClick={closeModal} className="flex-1 p-3 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 transition font-medium">Cancelar</button>
+            <button onClick={handleDelete} disabled={saving} className="flex-1 p-3 rounded-xl bg-red-600 hover:bg-red-700 disabled:opacity-60 font-semibold transition">
+              {saving ? 'Eliminando...' : 'Eliminar'}
+            </button>
+          </div>
+        </Modal>
+      )}
+    </Layout>
+  )
+}
+</file>
+
+<file path="src/pages/Login.jsx">
+import { Link, useNavigate } from 'react-router-dom'
+import { useEffect, useState } from 'react'
+import { authApi, getAuthRedirectPath, getToken, setSession } from '../services/api'
+
+function Login() {
+  const navigate = useNavigate()
+  const [email, setEmail] = useState('')
+  const [password, setPassword] = useState('')
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState('')
+
+  useEffect(() => {
+    const token = getToken()
+    if (token) {
+      navigate(getAuthRedirectPath(), { replace: true })
+    }
+  }, [navigate])
+
+  const handleLogin = async (e) => {
+    e.preventDefault()
+    setError('')
+    setLoading(true)
+    try {
+      const res = await authApi.post('/auth/login', { email, password })
+      const token = res?.data?.token || res?.data?.accessToken || res?.data?.jwt
+      const userName = res?.data?.nombre || res?.data?.email || ''
+      const userRole = res?.data?.rol || 'USER'
+
+      if (token) {
+        setSession({
+          token,
+          userName,
+          userRole,
+          userEmail: res?.data?.email || email,
+        })
+        navigate(userRole === 'ADMIN' ? '/dashboard' : '/user')
+      } else {
+        navigate('/dashboard')
+      }
+    } catch (err) {
+      setError('Credenciales inválidas o error de conexión')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  return (
+    <div className="min-h-screen flex items-center justify-center bg-slate-950 text-white">
+      <div className="w-full max-w-md bg-gradient-to-br from-slate-900 to-slate-800 p-8 rounded-3xl shadow-2xl border border-slate-800">
+        <h1 className="text-4xl font-bold mb-2">Agro SaaS</h1>
+        <p className="text-slate-400 mb-6">Panel agrícola futurista 🌱</p>
+
+        <form onSubmit={handleLogin} className="space-y-4">
+          <input
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            type="email"
+            maxLength={100}
+            placeholder="Correo"
+            className="w-full p-3 rounded-xl bg-slate-800 border border-slate-700"
+            required
+          />
+
+          <input
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            type="password"
+            placeholder="Contraseña"
+            className="w-full p-3 rounded-xl bg-slate-800 border border-slate-700"
+            required
+          />
+
+          <button
+            disabled={loading}
+            className="w-full bg-emerald-500 disabled:opacity-60 hover:bg-emerald-600 transition p-3 rounded-xl font-semibold"
+          >
+            {loading ? 'Ingresando...' : 'Ingresar'}
+          </button>
+        </form>
+
+        {error && <p className="mt-4 text-red-400">{error}</p>}
+
+        <p className="mt-6 text-slate-400">
+          ¿No tienes cuenta?{' '}
+          <Link to="/register" className="text-emerald-400">
+            Crear cuenta
+          </Link>
+        </p>
+      </div>
+    </div>
+  )
+}
+
+export default Login
+</file>
+
+<file path="src/pages/Notificaciones.jsx">
+import { useEffect, useState } from 'react'
+import { Bell, Trash2, CheckCheck, Search, ChevronDown, RefreshCw } from 'lucide-react'
+import { notificationApi } from '../services/api'
+import Layout from '../components/Layout'
+
+const TIPOS = ['INFO', 'ALERTA', 'ERROR', 'EXITO']
+
+const tipoStyle = {
+  INFO:   'bg-blue-500/10 text-blue-400 border-blue-500/20',
+  ALERTA: 'bg-amber-500/10 text-amber-400 border-amber-500/20',
+  ERROR:  'bg-red-500/10 text-red-400 border-red-500/20',
+  EXITO:  'bg-emerald-500/10 text-emerald-400 border-emerald-500/20',
+}
+
+function TipoBadge({ tipo }) {
+  return (
+    <span className={`text-xs font-medium px-2.5 py-0.5 rounded-full border ${tipoStyle[tipo] || 'bg-slate-700 text-slate-300 border-slate-600'}`}>
+      {tipo || '—'}
+    </span>
+  )
+}
+
+function timeAgo(dateStr) {
+  if (!dateStr) return '—'
+  const diff = Date.now() - new Date(dateStr).getTime()
+  const mins = Math.floor(diff / 60000)
+  if (mins < 1) return 'Ahora'
+  if (mins < 60) return `Hace ${mins}m`
+  const hrs = Math.floor(mins / 60)
+  if (hrs < 24) return `Hace ${hrs}h`
+  const days = Math.floor(hrs / 24)
+  return `Hace ${days}d`
+}
+
+export default function Notificaciones() {
+  const [notifs, setNotifs] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState('')
+  const [search, setSearch] = useState('')
+  const [filterTipo, setFilterTipo] = useState('')
+  const [filterLeida, setFilterLeida] = useState('')
+  const [refreshing, setRefreshing] = useState(false)
+
+  const fetchNotifs = async (silent = false) => {
+    if (!silent) setLoading(true)
+    else setRefreshing(true)
+    setError('')
+    try {
+      const res = await notificationApi.get('/notificaciones')
+      setNotifs(res.data || [])
+    } catch {
+      setError('No se pudo conectar con el NotificationService.')
+    } finally {
+      setLoading(false)
+      setRefreshing(false)
+    }
+  }
+
+  useEffect(() => { fetchNotifs() }, [])
+
+  const markAsRead = async (id) => {
+    try {
+      await notificationApi.patch(`/notificaciones/${id}/leida`)
+      setNotifs(prev => prev.map(n => n.id === id ? { ...n, leida: true } : n))
+    } catch {
+      // silently fail
+    }
+  }
+
+  const markAllRead = async () => {
+    try {
+      await notificationApi.patch('/notificaciones/todas/leidas')
+      setNotifs(prev => prev.map(n => ({ ...n, leida: true })))
+    } catch {}
+  }
+
+  const deleteNotif = async (id) => {
+    try {
+      await notificationApi.delete(`/notificaciones/${id}`)
+      setNotifs(prev => prev.filter(n => n.id !== id))
+    } catch {}
+  }
+
+  const filtered = notifs.filter(n => {
+    const matchSearch = (n.titulo || '').toLowerCase().includes(search.toLowerCase()) ||
+      (n.mensaje || '').toLowerCase().includes(search.toLowerCase())
+    const matchTipo = filterTipo ? n.tipo === filterTipo : true
+    const matchLeida = filterLeida === '' ? true : filterLeida === 'leidas' ? n.leida : !n.leida
+    return matchSearch && matchTipo && matchLeida
+  })
+
+  const unreadCount = notifs.filter(n => !n.leida).length
+
+  return (
+    <Layout>
+      <div className="p-8">
+        {/* Header */}
+        <div className="flex items-center justify-between mb-8">
+          <div>
+            <div className="flex items-center gap-3 mb-1">
+              <div className="relative">
+                <Bell size={28} className="text-emerald-400" />
+                {unreadCount > 0 && (
+                  <span className="absolute -top-1.5 -right-1.5 bg-red-500 text-white text-[10px] font-bold rounded-full w-4 h-4 flex items-center justify-center">
+                    {unreadCount > 9 ? '9+' : unreadCount}
+                  </span>
+                )}
+              </div>
+              <h1 className="text-3xl font-bold">Notificaciones</h1>
+            </div>
+            <p className="text-slate-400">Canal del NotificationService</p>
+          </div>
+          <div className="flex items-center gap-3">
+            <button
+              onClick={() => fetchNotifs(true)}
+              disabled={refreshing}
+              className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 transition text-sm font-medium"
+            >
+              <RefreshCw size={15} className={refreshing ? 'animate-spin' : ''} />
+              Actualizar
+            </button>
+            {unreadCount > 0 && (
+              <button
+                onClick={markAllRead}
+                className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border border-emerald-500/20 transition text-sm font-medium"
+              >
+                <CheckCheck size={15} />
+                Marcar todas como leídas
+              </button>
+            )}
+          </div>
+        </div>
+
+        {/* Summary */}
+        <div className="grid grid-cols-2 gap-4 mb-8">
+          <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5">
+            <p className="text-slate-400 text-sm mb-1">Sin leer</p>
+            <p className="text-3xl font-bold text-white">{unreadCount}</p>
+          </div>
+          <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5">
+            <p className="text-slate-400 text-sm mb-1">Total</p>
+            <p className="text-3xl font-bold text-white">{notifs.length}</p>
+          </div>
+        </div>
+
+        {/* Filters */}
+        <div className="flex gap-3 mb-6">
+          <div className="relative flex-1">
+            <Search size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" />
+            <input
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Buscar en notificaciones..."
+              className="w-full pl-10 pr-4 py-3 bg-slate-900 border border-slate-700 rounded-xl text-sm placeholder:text-slate-500 focus:outline-none focus:border-emerald-500 transition"
+            />
+          </div>
+          <div className="relative">
+            <select
+              value={filterTipo}
+              onChange={(e) => setFilterTipo(e.target.value)}
+              className="appearance-none pl-4 pr-10 py-3 bg-slate-900 border border-slate-700 rounded-xl text-sm focus:outline-none focus:border-emerald-500 transition"
+            >
+              <option value="">Todos los tipos</option>
+              {TIPOS.map(t => <option key={t} value={t}>{t}</option>)}
+            </select>
+            <ChevronDown size={14} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+          </div>
+          <div className="relative">
+            <select
+              value={filterLeida}
+              onChange={(e) => setFilterLeida(e.target.value)}
+              className="appearance-none pl-4 pr-10 py-3 bg-slate-900 border border-slate-700 rounded-xl text-sm focus:outline-none focus:border-emerald-500 transition"
+            >
+              <option value="">Todas</option>
+              <option value="noleidas">Sin leer</option>
+              <option value="leidas">Leídas</option>
+            </select>
+            <ChevronDown size={14} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+          </div>
+        </div>
+
+        {loading && <div className="text-center py-20 text-slate-400">Cargando notificaciones...</div>}
+        {error && <div className="bg-red-500/10 border border-red-500/30 rounded-2xl p-4 text-red-400 text-sm mb-4">{error}</div>}
+
+        {/* Notifications list */}
+        {!loading && !error && (
+          <div className="space-y-3">
+            {filtered.length === 0 ? (
+              <div className="text-center py-20 text-slate-500">No hay notificaciones</div>
+            ) : filtered.map((n) => (
+              <div
+                key={n.id}
+                className={`bg-slate-900 border rounded-2xl p-5 flex items-start gap-4 transition ${
+                  n.leida ? 'border-slate-800 opacity-60' : 'border-slate-700'
+                }`}
+              >
+                <div className="mt-0.5">
+                  <TipoBadge tipo={n.tipo} />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2 mb-1">
+                    <p className={`font-semibold text-sm ${n.leida ? 'text-slate-400' : 'text-white'}`}>
+                      {n.titulo || 'Sin título'}
+                    </p>
+                    {!n.leida && (
+                      <span className="w-2 h-2 bg-emerald-400 rounded-full shrink-0" />
+                    )}
+                  </div>
+                  <p className="text-slate-400 text-sm">{n.mensaje || '—'}</p>
+                  <p className="text-slate-600 text-xs mt-2">{timeAgo(n.creadoEn || n.createdAt)}</p>
+                </div>
+                <div className="flex items-center gap-2 shrink-0">
+                  {!n.leida && (
+                    <button
+                      onClick={() => markAsRead(n.id)}
+                      title="Marcar como leída"
+                      className="p-2 rounded-lg text-slate-400 hover:text-emerald-400 hover:bg-emerald-500/10 transition"
+                    >
+                      <CheckCheck size={15} />
+                    </button>
+                  )}
+                  <button
+                    onClick={() => deleteNotif(n.id)}
+                    title="Eliminar"
+                    className="p-2 rounded-lg text-slate-400 hover:text-red-400 hover:bg-red-500/10 transition"
+                  >
+                    <Trash2 size={15} />
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    </Layout>
+  )
+}
+</file>
+
+<file path="src/pages/Ordenes.jsx">
+import { useEffect, useState } from 'react'
+import { ShoppingCart, Plus, Eye, X, Check, Search, ChevronDown, AlertCircle } from 'lucide-react'
+import { getUserName, purchaseApi, productApi, inventoryApi } from '../services/api'
+import Layout from '../components/Layout'
+
+const ESTADOS = ['PENDIENTE', 'APROBADA', 'RECHAZADA', 'ENTREGADA']
+
+const estadoStyle = {
+  PENDIENTE:  'bg-amber-500/10 text-amber-400 border-amber-500/20',
+  APROBADA:   'bg-emerald-500/10 text-emerald-400 border-emerald-500/20',
+  RECHAZADA:  'bg-red-500/10 text-red-400 border-red-500/20',
+  ENTREGADA:  'bg-blue-500/10 text-blue-400 border-blue-500/20',
+}
+
+const EMPTY_FORM = { proveedorNombre: '', productoId: '', cantidad: '', precioUnitario: '', estado: 'PENDIENTE', notas: '' }
+
+function StateBadge({ estado }) {
+  return (
+    <span className={`text-xs font-medium px-2.5 py-0.5 rounded-full border ${estadoStyle[estado] || 'bg-slate-700 text-slate-300 border-slate-600'}`}>
+      {estado || '—'}
+    </span>
+  )
+}
+
+function Modal({ title, onClose, children }) {
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
+      <div className="bg-slate-900 border border-slate-700 rounded-3xl w-full max-w-lg p-8 shadow-2xl max-h-[90vh] overflow-y-auto">
+        <div className="flex justify-between items-center mb-6">
+          <h2 className="text-xl font-bold">{title}</h2>
+          <button onClick={onClose} className="text-slate-400 hover:text-white transition"><X size={20} /></button>
+        </div>
+        {children}
+      </div>
+    </div>
+  )
+}
+
+export default function Ordenes() {
+  const [ordenes, setOrdenes] = useState([])
+  const [productos, setProductos] = useState([])
+  const [stockMap, setStockMap] = useState({})
+  const [lineItemsMap, setLineItemsMap] = useState({})
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState('')
+  const [search, setSearch] = useState('')
+  const [filterEstado, setFilterEstado] = useState('')
+  const [modal, setModal] = useState(null)
+  const [selected, setSelected] = useState(null)
+  const [form, setForm] = useState(EMPTY_FORM)
+  const [saving, setSaving] = useState(false)
+  const [formError, setFormError] = useState('')
+  const [loadingProductDetail, setLoadingProductDetail] = useState(false)
+
+  const fetchAll = async () => {
+    setLoading(true)
+    setError('')
+    try {
+      const [ordRes, prodRes, stockRes, lineRes] = await Promise.all([
+        purchaseApi.get('/ordenes'),
+        productApi.get('/productos').catch(() => ({ data: [] })),
+        inventoryApi.get('/inventory/stock').catch(() => ({ data: [] })),
+        purchaseApi.get('/lineas-orden').catch(() => ({ data: [] })),
+      ])
+      setOrdenes(ordRes.data || [])
+      setProductos(prodRes.data || [])
+
+      const stock = {}
+      if (Array.isArray(stockRes.data)) {
+        stockRes.data.forEach(item => {
+          stock[item.productoId] = item.cantidad
+        })
+      }
+      setStockMap(stock)
+
+      const lineMap = {}
+      if (Array.isArray(lineRes.data)) {
+        lineRes.data.forEach(line => {
+          const orderId = String(line.ordenId)
+          if (!lineMap[orderId]) lineMap[orderId] = []
+          lineMap[orderId].push(line)
+        })
+      }
+      setLineItemsMap(lineMap)
+    } catch {
+      setError('No se pudo conectar con los servicios.')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  useEffect(() => { fetchAll() }, [])
+
+  const handleProductoSelect = async (productoId) => {
+    setForm(prev => ({ ...prev, productoId, precioUnitario: '' }))
+    if (!productoId) return
+
+    setLoadingProductDetail(true)
+    try {
+      const res = await productApi.get(`/productos/${productoId}`)
+      const producto = res.data
+      setForm(prev => ({ ...prev, precioUnitario: producto.precio || '' }))
+    } catch {
+      setFormError('Error al obtener detalles del producto.')
+    } finally {
+      setLoadingProductDetail(false)
+    }
+  }
+
+  const getStockDisponible = (productoId) => {
+    return stockMap[productoId] || 0
+  }
+
+  const productoNombre = (id) => {
+    const p = productos.find(p => String(p.id) === String(id))
+    return p ? p.nombre : id ? `Producto #${id}` : '—'
+  }
+
+  const openCreate = () => { setForm(EMPTY_FORM); setFormError(''); setModal('create') }
+  const openView = (o) => { setSelected(o); setModal('view') }
+  const openChangeState = (o) => { setSelected(o); setForm({ estado: o.estado }); setFormError(''); setModal('state') }
+  const closeModal = () => { setModal(null); setSelected(null) }
+
+  const handleCreate = async () => {
+    setSaving(true)
+    setFormError('')
+    try {
+      const cantidad = parseInt(form.cantidad, 10)
+      const productoId = parseInt(form.productoId, 10)
+      const precioUnitario = parseFloat(form.precioUnitario)
+      const stockDisp = getStockDisponible(form.productoId)
+
+      if (!form.proveedorNombre?.trim()) {
+        setFormError('El nombre del proveedor es obligatorio.')
+        setSaving(false)
+        return
+      }
+
+      if (!form.productoId) {
+        setFormError('Selecciona un producto válido.')
+        setSaving(false)
+        return
+      }
+
+      if (!Number.isInteger(cantidad) || cantidad <= 0) {
+        setFormError('Ingresa una cantidad válida.')
+        setSaving(false)
+        return
+      }
+
+      if (cantidad > stockDisp) {
+        setFormError(`Stock insuficiente. Disponible: ${stockDisp} unidades`)
+        setSaving(false)
+        return
+      }
+
+      if (Number.isNaN(precioUnitario) || precioUnitario <= 0) {
+        setFormError('Precio unitario inválido.')
+        setSaving(false)
+        return
+      }
+
+      const orderPayload = {
+        usuarioId: form.proveedorNombre || 'usuario-anonimo',
+        estado: form.estado,
+        total: cantidad * precioUnitario,
+      }
+
+      const orderRes = await purchaseApi.post('/ordenes', orderPayload)
+      const createdOrder = orderRes.data
+
+      try {
+        await purchaseApi.post('/lineas-orden', {
+          ordenId: createdOrder.id,
+          productoId,
+          cantidad,
+          precioUnitario,
+        })
+      } catch (lineError) {
+        await purchaseApi.delete(`/ordenes/${createdOrder.id}`).catch(() => {})
+        throw lineError
+      }
+
+      closeModal()
+      fetchAll()
+    } catch {
+      setFormError('Error al crear la orden. Verifica los campos.')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  const handleChangeState = async () => {
+    setSaving(true)
+    setFormError('')
+    try {
+      await purchaseApi.patch(`/ordenes/${selected.id}/estado`, { estado: form.estado })
+      closeModal()
+      fetchAll()
+    } catch {
+      setFormError('Error al actualizar el estado.')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  const filtered = ordenes.filter(o => {
+    const lineas = lineItemsMap[String(o.id)] || []
+    const matchSearch = (o.usuarioId || '').toLowerCase().includes(search.toLowerCase()) ||
+      lineas.some(l => productoNombre(l.productoId).toLowerCase().includes(search.toLowerCase()))
+    const matchEstado = filterEstado ? o.estado === filterEstado : true
+    return matchSearch && matchEstado
+  })
+
+  // Stats
+  const stats = ESTADOS.reduce((acc, e) => {
+    acc[e] = ordenes.filter(o => o.estado === e).length
+    return acc
+  }, {})
+
+  return (
+    <Layout>
+      <div className="p-8">
+        <div className="flex items-center justify-between mb-8">
+          <div>
+            <div className="flex items-center gap-3 mb-1">
+              <ShoppingCart size={28} className="text-emerald-400" />
+              <h1 className="text-3xl font-bold">Órdenes de Compra</h1>
+            </div>
+            <p className="text-slate-400">Gestión del PurchaseOrderService</p>
+          </div>
+          <button
+            onClick={openCreate}
+            className="flex items-center gap-2 bg-emerald-500 hover:bg-emerald-600 text-slate-900 font-semibold px-5 py-2.5 rounded-xl transition"
+          >
+            <Plus size={18} />
+            Nueva Orden
+          </button>
+        </div>
+
+        {/* Stats */}
+        <div className="grid grid-cols-4 gap-4 mb-8">
+          {ESTADOS.map(e => (
+            <div key={e} className="bg-slate-900 border border-slate-800 rounded-2xl p-4">
+              <p className="text-slate-400 text-xs mb-1">{e}</p>
+              <p className="text-2xl font-bold">{stats[e] || 0}</p>
+            </div>
+          ))}
+        </div>
+
+        {/* Filters */}
+        <div className="flex gap-3 mb-6">
+          <div className="relative flex-1">
+            <Search size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" />
+            <input
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Buscar por proveedor o producto..."
+              className="w-full pl-10 pr-4 py-3 bg-slate-900 border border-slate-700 rounded-xl text-sm placeholder:text-slate-500 focus:outline-none focus:border-emerald-500 transition"
+            />
+          </div>
+          <div className="relative">
+            <select
+              value={filterEstado}
+              onChange={(e) => setFilterEstado(e.target.value)}
+              className="appearance-none pl-4 pr-10 py-3 bg-slate-900 border border-slate-700 rounded-xl text-sm focus:outline-none focus:border-emerald-500 transition"
+            >
+              <option value="">Todos los estados</option>
+              {ESTADOS.map(e => <option key={e} value={e}>{e}</option>)}
+            </select>
+            <ChevronDown size={14} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+          </div>
+        </div>
+
+        {loading && <div className="text-center py-20 text-slate-400">Cargando órdenes...</div>}
+        {error && <div className="bg-red-500/10 border border-red-500/30 rounded-2xl p-4 text-red-400 text-sm mb-4">{error}</div>}
+
+        {!loading && !error && (
+          <div className="bg-slate-900 rounded-2xl border border-slate-800 overflow-hidden">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-slate-800 text-slate-400 text-left">
+                  <th className="px-6 py-4 font-medium">#</th>
+                  <th className="px-6 py-4 font-medium">Proveedor</th>
+                  <th className="px-6 py-4 font-medium">Producto</th>
+                  <th className="px-6 py-4 font-medium">Cantidad</th>
+                  <th className="px-6 py-4 font-medium">Total</th>
+                  <th className="px-6 py-4 font-medium">Estado</th>
+                  <th className="px-6 py-4 font-medium">Acciones</th>
+                </tr>
+              </thead>
+              <tbody>
+                {filtered.length === 0 ? (
+                  <tr><td colSpan={7} className="text-center py-12 text-slate-500">Sin órdenes registradas</td></tr>
+                ) : filtered.map((o) => {
+                  const lineas = lineItemsMap[String(o.id)] || []
+                  const firstLinea = lineas[0]
+                  const totalCantidad = lineas.reduce((sum, line) => sum + (line.cantidad || 0), 0)
+                  const productoLabel = firstLinea
+                    ? productoNombre(firstLinea.productoId) + (lineas.length > 1 ? ' + ' + (lineas.length - 1) + ' más' : '')
+                    : '—';
+                  return (
+                    <tr key={o.id} className="border-b border-slate-800/50 hover:bg-slate-800/30 transition">
+                      <td className="px-6 py-4 text-slate-400 font-mono text-xs">{o.id}</td>
+                      <td className="px-6 py-4 font-medium">{o.usuarioId || '—'}</td>
+                      <td className="px-6 py-4 text-slate-300">{productoLabel}</td>
+                      <td className="px-6 py-4 text-slate-300">{totalCantidad || '—'}</td>
+                      <td className="px-6 py-4 text-emerald-400 font-mono">
+                        {o.total != null
+                          ? `$${parseFloat(o.total).toLocaleString('es-CO')}`
+                          : '—'}
+                      </td>
+                    <td className="px-6 py-4"><StateBadge estado={o.estado} /></td>
+                    <td className="px-6 py-4">
+                      <div className="flex items-center gap-2">
+                        <button onClick={() => openView(o)} className="p-2 rounded-lg text-slate-400 hover:text-white hover:bg-slate-700 transition"><Eye size={15} /></button>
+                        <button onClick={() => openChangeState(o)} className="p-2 rounded-lg text-slate-400 hover:text-emerald-400 hover:bg-emerald-500/10 transition text-xs font-medium px-3">
+                          Estado
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                )})}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+
+      {/* Create Modal */}
+      {modal === 'create' && (
+        <Modal title="Nueva Orden de Compra" onClose={closeModal}>
+          <div className="space-y-4">
+            <input
+              value={form.proveedorNombre}
+              onChange={(e) => setForm({ ...form, proveedorNombre: e.target.value })}
+              placeholder="Nombre del proveedor"
+              className="w-full p-3 rounded-xl bg-slate-800 border border-slate-700 text-sm placeholder:text-slate-500 focus:outline-none focus:border-emerald-500 transition"
+            />
+            <div>
+              <select
+                value={form.productoId}
+                onChange={(e) => handleProductoSelect(e.target.value)}
+                disabled={loadingProductDetail}
+                className="w-full p-3 rounded-xl bg-slate-800 border border-slate-700 text-sm focus:outline-none focus:border-emerald-500 transition disabled:opacity-50"
+              >
+                <option value="">Selecciona un producto</option>
+                {productos.map(p => (
+                  <option key={p.id} value={p.id}>
+                    {p.nombre} - Stock: {getStockDisponible(p.id)} unidades
+                  </option>
+                ))}
+              </select>
+              {form.productoId && (
+                <div className={`mt-2 p-2 rounded-lg text-xs ${getStockDisponible(form.productoId) > 0 ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/30' : 'bg-red-500/10 text-red-400 border border-red-500/30'}`}>
+                  Stock disponible: <strong>{getStockDisponible(form.productoId)}</strong> unidades
+                </div>
+              )}
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <input
+                value={form.cantidad}
+                onChange={(e) => setForm({ ...form, cantidad: e.target.value })}
+                placeholder="Cantidad"
+                type="number"
+                min="1"
+                max={form.productoId ? getStockDisponible(form.productoId) : undefined}
+                className="w-full p-3 rounded-xl bg-slate-800 border border-slate-700 text-sm placeholder:text-slate-500 focus:outline-none focus:border-emerald-500 transition"
+              />
+              <div className="relative">
+                <input
+                  value={form.precioUnitario}
+                  onChange={(e) => setForm({ ...form, precioUnitario: e.target.value })}
+                  placeholder="Precio unitario"
+                  type="number"
+                  min="0"
+                  disabled={loadingProductDetail}
+                  className="w-full p-3 rounded-xl bg-slate-800 border border-slate-700 text-sm placeholder:text-slate-500 focus:outline-none focus:border-emerald-500 transition disabled:opacity-50"
+                />
+                {loadingProductDetail && (
+                  <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-slate-400">Cargando...</span>
+                )}
+              </div>
+            </div>
+            <textarea
+              value={form.notas}
+              onChange={(e) => setForm({ ...form, notas: e.target.value })}
+              placeholder="Notas adicionales (opcional)"
+              rows={3}
+              className="w-full p-3 rounded-xl bg-slate-800 border border-slate-700 text-sm placeholder:text-slate-500 focus:outline-none focus:border-emerald-500 transition resize-none"
+            />
+            {form.cantidad && form.precioUnitario && (
+              <div className="bg-slate-800 rounded-xl p-3 text-sm">
+                <span className="text-slate-400">Total estimado: </span>
+                <span className="text-emerald-400 font-bold">
+                  ${(parseFloat(form.precioUnitario || 0) * parseInt(form.cantidad || 0, 10)).toLocaleString('es-CO')}
+                </span>
+              </div>
+            )}
+            {form.productoId && parseInt(form.cantidad, 10) > getStockDisponible(form.productoId) && (
+              <div className="flex gap-2 bg-red-500/10 border border-red-500/30 rounded-xl p-3 text-red-400 text-sm">
+                <AlertCircle size={16} className="flex-shrink-0 mt-0.5" />
+                <span>La cantidad solicitada excede el stock disponible ({getStockDisponible(form.productoId)} unidades)</span>
+              </div>
+            )}
+            {formError && <p className="text-red-400 text-sm">{formError}</p>}
+            <button
+              onClick={handleCreate}
+              disabled={saving || loadingProductDetail || (form.productoId && parseInt(form.cantidad, 10) > getStockDisponible(form.productoId))}
+              className="w-full flex items-center justify-center gap-2 bg-emerald-500 hover:bg-emerald-600 disabled:opacity-60 text-slate-900 font-semibold p-3 rounded-xl transition"
+            >
+              <Check size={16} />
+              {saving ? 'Creando...' : 'Crear Orden'}
+            </button>
+          </div>
+        </Modal>
+      )}
+
+      {/* View Modal */}
+      {modal === 'view' && selected && (
+        <Modal title={`Orden #${selected.id}`} onClose={closeModal}>
+          <div className="space-y-4 text-sm">
+            <div className="space-y-2">
+              <div className="flex justify-between py-2 border-b border-slate-800">
+                <span className="text-slate-400">Proveedor</span>
+                <span className="text-white font-medium">{selected.usuarioId || '—'}</span>
+              </div>
+              <div className="flex justify-between py-2 border-b border-slate-800">
+                <span className="text-slate-400">Total</span>
+                <span className="text-white font-medium">
+                  {selected.total != null ? `$${parseFloat(selected.total).toLocaleString('es-CO')}` : '—'}
+                </span>
+              </div>
+              <div className="flex justify-between py-2 border-b border-slate-800">
+                <span className="text-slate-400">Estado</span>
+                <StateBadge estado={selected.estado} />
+              </div>
+            </div>
+
+            <div>
+              <h3 className="text-sm font-semibold text-slate-300 mb-2">Líneas de orden</h3>
+              {lineItemsMap[String(selected.id)]?.length > 0 ? (
+                <div className="space-y-3">
+                  {lineItemsMap[String(selected.id)].map((line) => (
+                    <div key={line.id} className="rounded-2xl border border-slate-800 bg-slate-950 p-3">
+                      <div className="flex justify-between items-center gap-3 text-sm mb-1">
+                        <span className="text-slate-400">{productoNombre(line.productoId)}</span>
+                        <span className="text-white font-medium">{line.cantidad} unidades</span>
+                      </div>
+                      <div className="flex justify-between text-slate-400 text-xs">
+                        <span>Precio u.</span>
+                        <span>{line.precioUnitario != null ? `$${parseFloat(line.precioUnitario).toLocaleString('es-CO')}` : '—'}</span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-slate-500">Sin líneas de orden registradas.</p>
+              )}
+            </div>
+          </div>
+        </Modal>
+      )}
+
+      {/* Change State Modal */}
+      {modal === 'state' && selected && (
+        <Modal title="Cambiar Estado" onClose={closeModal}>
+          <p className="text-slate-400 text-sm mb-4">Orden #{selected.id} — {selected.usuarioId}</p>
+          <select
+            value={form.estado}
+            onChange={(e) => setForm({ ...form, estado: e.target.value })}
+            className="w-full p-3 rounded-xl bg-slate-800 border border-slate-700 text-sm mb-4 focus:outline-none focus:border-emerald-500 transition"
+          >
+            {ESTADOS.map(e => <option key={e} value={e}>{e}</option>)}
+          </select>
+          {formError && <p className="text-red-400 text-sm mb-4">{formError}</p>}
+          <button
+            onClick={handleChangeState}
+            disabled={saving}
+            className="w-full flex items-center justify-center gap-2 bg-emerald-500 hover:bg-emerald-600 disabled:opacity-60 text-slate-900 font-semibold p-3 rounded-xl transition"
+          >
+            <Check size={16} />
+            {saving ? 'Guardando...' : 'Actualizar Estado'}
+          </button>
+        </Modal>
+      )}
+    </Layout>
+  )
+}
+</file>
+
+<file path="src/pages/Productos.jsx">
+import { useEffect, useState } from 'react'
+import { Package, Plus, Pencil, Trash2, X, Check, Search } from 'lucide-react'
+import { productApi, getUserRole } from '../services/api'
+import Layout from '../components/Layout'
+
+const EMPTY = { nombre: '', descripcion: '', precio: '', categoria: '', sku: '' }
+
+function generateSku(nombre = 'PROD') {
+  const base = nombre
+    .toString()
+    .trim()
+    .toUpperCase()
+    .replace(/[^A-Z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+    .slice(0, 20) || 'PROD'
+  const suffix = Math.floor(Math.random() * 90000 + 10000)
+  return `${base}-${suffix}`
+}
+
+function Badge({ children }) {
+  return (
+    <span className="bg-emerald-500/10 text-emerald-400 text-xs font-medium px-2.5 py-0.5 rounded-full border border-emerald-500/20">
+      {children}
+    </span>
+  )
+}
+
+function Modal({ title, onClose, children }) {
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
+      <div className="bg-slate-900 border border-slate-700 rounded-3xl w-full max-w-md p-8 shadow-2xl">
+        <div className="flex justify-between items-center mb-6">
+          <h2 className="text-xl font-bold">{title}</h2>
+          <button onClick={onClose} className="text-slate-400 hover:text-white transition">
+            <X size={20} />
+          </button>
+        </div>
+        {children}
+      </div>
+    </div>
+  )
+}
+
+export default function Productos() {
+  const [productos, setProductos] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState('')
+  const [search, setSearch] = useState('')
+  const [modal, setModal] = useState(null) // null | 'create' | 'edit' | 'delete'
+  const [selected, setSelected] = useState(null)
+  const [form, setForm] = useState(EMPTY)
+  const [saving, setSaving] = useState(false)
+  const [formError, setFormError] = useState('')
+  const isAdmin = getUserRole() === 'ADMIN'
+
+  const fetchProductos = async () => {
+    setLoading(true)
+    setError('')
+    try {
+      const res = await productApi.get('/productos')
+      setProductos(res.data || [])
+    } catch {
+      setError('No se pudo conectar con el ProductService.')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  useEffect(() => { fetchProductos() }, [])
+
+  const openCreate = () => {
+    setForm(EMPTY)
+    setFormError('')
+    setModal('create')
+  }
+
+  const openEdit = (p) => {
+    setSelected(p)
+    setForm({
+      nombre: p.nombre || '',
+      descripcion: p.descripcion || '',
+      precio: p.precio ?? '',
+      categoria: p.categoria || '',
+      sku: p.sku || '',
+    })
+    setFormError('')
+    setModal('edit')
+  }
+
+  const openDelete = (p) => {
+    setSelected(p)
+    setModal('delete')
+  }
+
+  const closeModal = () => { setModal(null); setSelected(null) }
+
+  const handleSave = async () => {
+    setSaving(true)
+    setFormError('')
+
+    const payload = {
+      ...form,
+      precio: parseFloat(form.precio),
+    }
+
+    if (!payload.nombre || !payload.categoria || Number.isNaN(payload.precio)) {
+      setFormError('Nombre, categoría y precio son obligatorios.')
+      setSaving(false)
+      return
+    }
+
+    if (!payload.sku) {
+      payload.sku = generateSku(payload.nombre)
+      setForm({ ...form, sku: payload.sku })
+    }
+
+    try {
+      if (modal === 'create') {
+        await productApi.post('/productos', payload)
+      } else {
+        await productApi.put(`/productos/${selected.id}`, payload)
+      }
+      closeModal()
+      fetchProductos()
+    } catch {
+      setFormError('Error al guardar. Verifica los datos.')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  const handleDelete = async () => {
+    setSaving(true)
+    try {
+      await productApi.delete(`/productos/${selected.id}`)
+      closeModal()
+      fetchProductos()
+    } catch {
+      setFormError('Error al eliminar.')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  const filtered = productos.filter(p =>
+    (p.nombre || '').toLowerCase().includes(search.toLowerCase()) ||
+    (p.categoria || '').toLowerCase().includes(search.toLowerCase())
+  )
+
+  return (
+    <Layout>
+      <div className="p-8">
+        {/* Header */}
+        <div className="flex items-center justify-between mb-8">
+          <div>
+            <div className="flex items-center gap-3 mb-1">
+              <Package size={28} className="text-emerald-400" />
+              <h1 className="text-3xl font-bold">Productos</h1>
+            </div>
+            <p className="text-slate-400">Catálogo del ProductService</p>
+          </div>
+          {isAdmin && (
+            <button
+              onClick={openCreate}
+              className="flex items-center gap-2 bg-emerald-500 hover:bg-emerald-600 text-slate-900 font-semibold px-5 py-2.5 rounded-xl transition"
+            >
+              <Plus size={18} />
+              Nuevo Producto
+            </button>
+          )}
+        </div>
+
+        {/* Search */}
+        <div className="relative mb-6">
+          <Search size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" />
+          <input
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Buscar por nombre o categoría..."
+            className="w-full pl-10 pr-4 py-3 bg-slate-900 border border-slate-700 rounded-xl text-sm placeholder:text-slate-500 focus:outline-none focus:border-emerald-500 transition"
+          />
+        </div>
+
+        {/* States */}
+        {loading && (
+          <div className="text-center py-20 text-slate-400">Cargando productos...</div>
+        )}
+        {error && (
+          <div className="bg-red-500/10 border border-red-500/30 rounded-2xl p-4 text-red-400 text-sm mb-4">{error}</div>
+        )}
+
+        {/* Table */}
+        {!loading && !error && (
+          <div className="bg-slate-900 rounded-2xl border border-slate-800 overflow-hidden">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-slate-800 text-slate-400 text-left">
+                  <th className="px-6 py-4 font-medium">Nombre</th>
+                  <th className="px-6 py-4 font-medium">Categoría</th>
+                  <th className="px-6 py-4 font-medium">Precio</th>
+                  <th className="px-6 py-4 font-medium">Acciones</th>
+                </tr>
+              </thead>
+              <tbody>
+                {filtered.length === 0 ? (
+                  <tr>
+                    <td colSpan={4} className="text-center py-12 text-slate-500">
+                      Sin productos registrados
+                    </td>
+                  </tr>
+                ) : (
+                  filtered.map((p) => (
+                    <tr key={p.id} className="border-b border-slate-800/50 hover:bg-slate-800/30 transition">
+                      <td className="px-6 py-4 font-medium">{p.nombre}</td>
+                      <td className="px-6 py-4"><Badge>{p.categoria || '—'}</Badge></td>
+                      <td className="px-6 py-4 text-emerald-400 font-mono">
+                        ${parseFloat(p.precio || 0).toLocaleString('es-CO')}
+                      </td>
+                      <td className="px-6 py-4">
+                        {isAdmin ? (
+                          <div className="flex items-center gap-2">
+                            <button
+                              onClick={() => openEdit(p)}
+                              className="p-2 rounded-lg text-slate-400 hover:text-white hover:bg-slate-700 transition"
+                            >
+                              <Pencil size={15} />
+                            </button>
+                            <button
+                              onClick={() => openDelete(p)}
+                              className="p-2 rounded-lg text-slate-400 hover:text-red-400 hover:bg-red-500/10 transition"
+                            >
+                              <Trash2 size={15} />
+                            </button>
+                          </div>
+                        ) : (
+                          <span className="text-slate-500 text-sm">Sin permisos</span>
+                        )}
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+
+      {/* Create / Edit Modal */}
+      {(modal === 'create' || modal === 'edit') && (
+        <Modal title={modal === 'create' ? 'Nuevo Producto' : 'Editar Producto'} onClose={closeModal}>
+          <div className="space-y-4">
+            {['nombre', 'descripcion', 'categoria'].map((field) => (
+              <input
+                key={field}
+                value={form[field]}
+                onChange={(e) => setForm({ ...form, [field]: e.target.value })}
+                placeholder={field.charAt(0).toUpperCase() + field.slice(1)}
+                className="w-full p-3 rounded-xl bg-slate-800 border border-slate-700 text-sm placeholder:text-slate-500 focus:outline-none focus:border-emerald-500 transition"
+              />
+            ))}
+            <input
+              value={form.precio}
+              onChange={(e) => setForm({ ...form, precio: e.target.value })}
+              placeholder="Precio"
+              type="number"
+              min="0"
+              className="w-full p-3 rounded-xl bg-slate-800 border border-slate-700 text-sm placeholder:text-slate-500 focus:outline-none focus:border-emerald-500 transition"
+            />
+            {formError && <p className="text-red-400 text-sm">{formError}</p>}
+            <button
+              onClick={handleSave}
+              disabled={saving}
+              className="w-full flex items-center justify-center gap-2 bg-emerald-500 hover:bg-emerald-600 disabled:opacity-60 text-slate-900 font-semibold p-3 rounded-xl transition"
+            >
+              <Check size={16} />
+              {saving ? 'Guardando...' : 'Guardar'}
+            </button>
+          </div>
+        </Modal>
+      )}
+
+      {/* Delete Modal */}
+      {modal === 'delete' && (
+        <Modal title="Eliminar Producto" onClose={closeModal}>
+          <p className="text-slate-300 mb-6">
+            ¿Deseas eliminar <span className="font-bold text-white">{selected?.nombre}</span>? Esta acción no se puede deshacer.
+          </p>
+          {formError && <p className="text-red-400 text-sm mb-4">{formError}</p>}
+          <div className="flex gap-3">
+            <button onClick={closeModal} className="flex-1 p-3 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 transition font-medium">
+              Cancelar
+            </button>
+            <button onClick={handleDelete} disabled={saving} className="flex-1 p-3 rounded-xl bg-red-600 hover:bg-red-700 disabled:opacity-60 font-semibold transition">
+              {saving ? 'Eliminando...' : 'Eliminar'}
+            </button>
+          </div>
+        </Modal>
+      )}
+    </Layout>
+  )
+}
+</file>
+
+<file path="src/pages/Register.jsx">
+import { Link, useNavigate } from 'react-router-dom'
+import { useEffect, useState } from 'react'
+import { authApi, getAuthRedirectPath, getToken } from '../services/api'
+
+function Register() {
+  const navigate = useNavigate()
+  const [cedula, setCedula] = useState('')
+  const [nombre, setNombre] = useState('')
+  const [email, setEmail] = useState('')
+  const [password, setPassword] = useState('')
+  const [rol, setRol] = useState('USER')
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState('')
+
+  useEffect(() => {
+    const token = getToken()
+    if (token) {
+      navigate(getAuthRedirectPath(), { replace: true })
+    }
+  }, [navigate])
+
+  const handleRegister = async (e) => {
+    e.preventDefault()
+    setError('')
+    setLoading(true)
+    try {
+      await authApi.post('/auth/register', { cedula, nombre, email, password, rol })
+      navigate('/')
+    } catch (err) {
+      setError('Error al registrar usuario')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  return (
+    <div className="min-h-screen flex items-center justify-center bg-slate-950 text-white">
+      <div className="w-full max-w-md bg-gradient-to-br from-slate-900 to-slate-800 p-8 rounded-3xl shadow-2xl border border-slate-800">
+        <h1 className="text-4xl font-bold mb-2">Crear Cuenta</h1>
+        <p className="text-slate-400 mb-6">Cultivando usuarios digitales 🚜</p>
+
+        <form onSubmit={handleRegister} className="space-y-4">
+          <input
+            value={cedula}
+            onChange={(e) => setCedula(e.target.value)}
+            type="text"
+            minLength={8}
+            maxLength={20}
+            placeholder="Cédula"
+            className="w-full p-3 rounded-xl bg-slate-800 border border-slate-700"
+            required
+          />
+
+          <input
+            value={nombre}
+            onChange={(e) => setNombre(e.target.value)}
+            type="text"
+            placeholder="Nombre Completo"
+            className="w-full p-3 rounded-xl bg-slate-800 border border-slate-700"
+            required
+          />
+
+          <input
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            type="email"
+            placeholder="Correo"
+            className="w-full p-3 rounded-xl bg-slate-800 border border-slate-700"
+            required
+          />
+
+          <input
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            type="password"
+            placeholder="Contraseña"
+            className="w-full p-3 rounded-xl bg-slate-800 border border-slate-700"
+            required
+          />
+
+          <select
+            value={rol}
+            onChange={(e) => setRol(e.target.value)}
+            className="w-full p-3 rounded-xl bg-slate-800 border border-slate-700"
+          >
+            <option value="USER">Usuario</option>
+            <option value="ADMIN">Administrador</option>
+          </select>
+
+          <button
+            disabled={loading}
+            className="w-full bg-emerald-500 disabled:opacity-60 hover:bg-emerald-600 transition p-3 rounded-xl font-semibold"
+          >
+            {loading ? 'Registrando...' : 'Registrarse'}
+          </button>
+        </form>
+
+        {error && <p className="mt-4 text-red-400">{error}</p>}
+
+        <p className="mt-6 text-slate-400">
+          ¿Ya tienes cuenta?{' '}
+          <Link to="/" className="text-emerald-400">
+            Iniciar sesión
+          </Link>
+        </p>
+      </div>
+    </div>
+  )
+}
+
+export default Register
+</file>
+
+<file path="src/pages/UserDashboard.jsx">
+import { Package, Warehouse, Bell, ShoppingCart } from 'lucide-react'
+import { useEffect, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
+import axios from 'axios'
+import { serviceRoots, getUserName } from '../services/api'
+import Layout from '../components/Layout'
+
+function StatCard({ icon, title, value, onClick }) {
+  return (
+    <button
+      onClick={onClick}
+      className="bg-slate-900 rounded-3xl p-6 border border-slate-800 shadow-xl text-left hover:border-emerald-500/40 hover:bg-slate-800/50 transition-all group"
+    >
+      <div className="flex justify-between items-center">
+        <div>
+          <p className="text-slate-400">{title}</p>
+          <h2 className="text-3xl font-bold text-white mt-2">{value}</h2>
+        </div>
+        <div className="text-emerald-400 group-hover:scale-110 transition-transform">
+          {icon}
+        </div>
+      </div>
+    </button>
+  )
+}
+
+export default function UserDashboard() {
+  const navigate = useNavigate()
+  const [status, setStatus] = useState({})
+  const userName = getUserName()
+
+  useEffect(() => {
+    const entries = Object.entries(serviceRoots)
+    const checks = entries.map(async ([key, root]) => {
+      try {
+        const url = root.replace(/\/$/, '')
+        const res = await axios.get(url + '/actuator/health', { timeout: 2500 }).catch(() => null)
+        if (res && res.status >= 200 && res.status < 300) return [key, { ok: true }]
+        await axios.get(url + '/', { timeout: 2500 })
+        return [key, { ok: true }]
+      } catch {
+        return [key, { ok: false }]
+      }
+    })
+    Promise.all(checks).then((results) => setStatus(Object.fromEntries(results)))
+  }, [])
+
+  return (
+    <Layout>
+      <div className="p-8">
+        <div className="mb-10">
+          <h1 className="text-5xl font-bold">Bienvenido, {userName || 'Usuario'}</h1>
+          <p className="text-slate-400 mt-2">Panel de usuario — aquí puedes revisar tus métricas importantes.</p>
+        </div>
+
+        <div className="grid md:grid-cols-3 gap-6">
+          <StatCard
+            title="Productos disponibles"
+            value="Navegar"
+            icon={<Package size={42} />}
+            onClick={() => navigate('/productos')}
+          />
+          <StatCard
+            title="Inventario"
+            value="Revisar"
+            icon={<Warehouse size={42} />}
+            onClick={() => navigate('/inventario')}
+          />
+          <StatCard
+            title="Notificaciones"
+            value="Ver"
+            icon={<Bell size={42} />}
+            onClick={() => navigate('/notificaciones')}
+          />
+        </div>
+
+        <div className="mt-10 bg-slate-900 rounded-3xl border border-slate-800 p-8">
+          <h2 className="text-2xl font-bold mb-4">Estado de servicios</h2>
+          <div className="grid md:grid-cols-2 gap-4">
+            {Object.keys(serviceRoots).map((key) => {
+              const label = {
+                auth: 'AuthService',
+                product: 'ProductService',
+                inventory: 'InventoryService',
+                notification: 'NotificationService',
+                purchase: 'PurchaseOrderService',
+              }[key]
+
+              const ok = status[key]?.ok
+
+              return (
+                <div
+                  key={key}
+                  className="flex items-center justify-between bg-slate-800 rounded-2xl p-4 border border-slate-700"
+                >
+                  <div>
+                    <h3 className="font-semibold">{label}</h3>
+                    <p className="text-slate-400 text-sm mt-1">{serviceRoots[key]}</p>
+                  </div>
+                  <span className={`px-3 py-1 rounded-full font-medium text-sm ${ok === undefined ? 'bg-slate-600 text-slate-300' : ok ? 'bg-emerald-500 text-slate-900' : 'bg-red-600 text-white'}`}>
+                    {ok === undefined ? 'Verificando...' : ok ? 'Online' : 'Offline'}
+                  </span>
+                </div>
+              )
+            })}
+          </div>
+        </div>
+      </div>
+    </Layout>
+  )
+}
+</file>
+
+<file path="src/services/api.js">
+import axios from 'axios'
+
+const SERVICE_ROOTS = {
+  auth: import.meta.env.VITE_AUTH_URL || 'http://localhost:8083',
+  product: import.meta.env.VITE_PRODUCT_URL || 'http://localhost:8084',
+  inventory: import.meta.env.VITE_INVENTORY_URL || 'http://localhost:8082',
+  notification: import.meta.env.VITE_NOTIFICATION_URL || 'http://localhost:8086',
+  purchase: import.meta.env.VITE_PURCHASE_URL || 'http://localhost:8085',
+}
+
+const SERVICE_API = {
+  auth: (SERVICE_ROOTS.auth + '/api'),
+  product: (SERVICE_ROOTS.product + '/api'),
+  inventory: (SERVICE_ROOTS.inventory + '/api'),
+  notification: (SERVICE_ROOTS.notification + '/api'),
+  purchase: (SERVICE_ROOTS.purchase + '/api'),
+}
+
+const AUTH_STORAGE_KEYS = {
+  token: 'token',
+  userName: 'userName',
+  userRole: 'userRole',
+  userEmail: 'userEmail',
+}
+
+export function getToken() {
+  return localStorage.getItem(AUTH_STORAGE_KEYS.token)
+}
+
+export function getUserName() {
+  return localStorage.getItem(AUTH_STORAGE_KEYS.userName) || ''
+}
+
+export function getUserRole() {
+  return localStorage.getItem(AUTH_STORAGE_KEYS.userRole) || ''
+}
+
+export function getAuthRedirectPath() {
+  return getUserRole() === 'ADMIN' ? '/dashboard' : '/user'
+}
+
+export function setSession({ token, userName, userRole, userEmail }) {
+  localStorage.setItem(AUTH_STORAGE_KEYS.token, token)
+  localStorage.setItem(AUTH_STORAGE_KEYS.userName, userName || '')
+  localStorage.setItem(AUTH_STORAGE_KEYS.userRole, userRole || '')
+  localStorage.setItem(AUTH_STORAGE_KEYS.userEmail, userEmail || '')
+}
+
+export function clearSession() {
+  localStorage.removeItem(AUTH_STORAGE_KEYS.token)
+  localStorage.removeItem(AUTH_STORAGE_KEYS.userName)
+  localStorage.removeItem(AUTH_STORAGE_KEYS.userRole)
+  localStorage.removeItem(AUTH_STORAGE_KEYS.userEmail)
+}
+
+function createApi(baseURL) {
+  const instance = axios.create({ baseURL })
+
+  instance.interceptors.request.use((config) => {
+    const token = getToken()
+    if (token) {
+      config.headers = config.headers || {}
+      config.headers.Authorization = `Bearer ${token}`
+    }
+    return config
+  })
+
+  instance.interceptors.response.use(
+    (res) => res,
+    (err) => {
+      if (err?.response?.status === 401) {
+        clearSession()
+        if (typeof window !== 'undefined') {
+          window.location.href = '/'
+        }
+        console.warn('Token inválido o expirado — la sesión ha sido cerrada')
+      }
+      return Promise.reject(err)
+    }
+  )
+
+  return instance
+}
+
+export const authApi = createApi(SERVICE_API.auth)
+export const productApi = createApi(SERVICE_API.product)
+export const inventoryApi = createApi(SERVICE_API.inventory)
+export const notificationApi = createApi(SERVICE_API.notification)
+export const purchaseApi = createApi(SERVICE_API.purchase)
+
+export const serviceRoots = SERVICE_ROOTS
+
+export default createApi
+</file>
+
+<file path="src/App.jsx">
+import { Routes, Route, Navigate } from 'react-router-dom'
+import { getAuthRedirectPath, getToken, getUserRole } from './services/api'
+import Login from './pages/Login'
+import Register from './pages/Register'
+import Dashboard from './pages/Dashboard'
+import UserDashboard from './pages/UserDashboard'
+import Productos from './pages/Productos'
+import Inventario from './pages/Inventario'
+import Ordenes from './pages/Ordenes'
+import Notificaciones from './pages/Notificaciones'
+
+function PublicRoute({ children }) {
+  const token = getToken()
+  return token ? <Navigate to={getAuthRedirectPath()} replace /> : children
+}
+
+function PrivateRoute({ children }) {
+  const token = getToken()
+  return token ? children : <Navigate to="/" replace />
+}
+
+function AdminRoute({ children }) {
+  const role = getUserRole()
+  return role === 'ADMIN' ? children : <Navigate to="/user" replace />
+}
+
+function App() {
+  const token = getToken()
+  const fallbackRoute = token ? getAuthRedirectPath() : '/'
+
+  return (
+    <Routes>
+      <Route path="/" element={<PublicRoute><Login /></PublicRoute>} />
+      <Route path="/register" element={<PublicRoute><Register /></PublicRoute>} />
+      <Route path="/dashboard" element={<PrivateRoute><AdminRoute><Dashboard /></AdminRoute></PrivateRoute>} />
+      <Route path="/user" element={<PrivateRoute><UserDashboard /></PrivateRoute>} />
+      <Route path="/productos" element={<PrivateRoute><Productos /></PrivateRoute>} />
+      <Route path="/inventario" element={<PrivateRoute><AdminRoute><Inventario /></AdminRoute></PrivateRoute>} />
+      <Route path="/ordenes" element={<PrivateRoute><Ordenes /></PrivateRoute>} />
+      <Route path="/notificaciones" element={<PrivateRoute><Notificaciones /></PrivateRoute>} />
+      <Route path="*" element={<Navigate to={fallbackRoute} replace />} />
+    </Routes>
+  )
+}
+
+export default App
+</file>
+
+<file path="src/index.css">
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+body {
+  font-family: Inter, sans-serif;
+}
+</file>
+
+<file path="src/main.jsx">
+import React from 'react'
+import ReactDOM from 'react-dom/client'
+import { BrowserRouter } from 'react-router-dom'
+import App from './App'
+import './index.css'
+
+ReactDOM.createRoot(document.getElementById('root')).render(
+  <BrowserRouter>
+    <App />
+  </BrowserRouter>
+)
+</file>
+
+<file path=".directory">
+[Desktop Entry]
+Icon=custom-folder
+</file>
+
+<file path=".gitignore">
+.env
+node_modules/
+dist/
+build/
+.vscode/
+.DS_Store
+</file>
+
+<file path="index.html">
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Agro SaaS Dashboard</title>
+  </head>
+  <body class="bg-slate-950">
+    <div id="root"></div>
+    <script type="module" src="/src/main.jsx"></script>
+  </body>
+</html>
+</file>
+
+<file path="package.json">
+{
+  "name": "agro-dashboard-react",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "axios": "^1.8.4",
+    "lucide-react": "^0.511.0",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
+    "react-router-dom": "^7.6.0"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-react": "^4.3.4",
+    "autoprefixer": "^10.4.20",
+    "postcss": "^8.5.3",
+    "tailwindcss": "^3.4.17",
+    "vite": "^6.2.0"
+  }
+}
+</file>
+
+<file path="postcss.config.js">
+export default {
+  plugins: {
+    tailwindcss: {},
+    autoprefixer: {},
+  },
+}
+</file>
+
+<file path="tailwind.config.js">
+export default {
+  content: ["./index.html", "./src/**/*.{js,ts,jsx,tsx}"],
+  theme: {
+    extend: {},
+  },
+  plugins: [],
+}
+</file>
+
+<file path="vite.config.js">
+import { defineConfig } from 'vite'
+import react from '@vitejs/plugin-react'
+
+export default defineConfig({
+  plugins: [react()],
+})
+</file>
+
+</files>
